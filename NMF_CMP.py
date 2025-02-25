@@ -1,4 +1,3 @@
-
 import collections
 import pandas as pd
 from pathlib import Path
@@ -289,17 +288,20 @@ path = str(Path.home() / f"Desktop/PLOS") # Change path for saved files here
 # define ancestor sequences
 covid_mother_seq_DNA = "AGAGTCCAACCAACAGAATCTATTGTTAGATTTCCTAATATTACAAACTTGTGCCCTTTTGGTGAAGTTTTTAACGCCACCAGATTTGCATCTGTTTATGCTTGGAACAGGAAGAGAATCAGCAACTGTGTTGCTGATTATTCTGTCCTATATAATTCCGCATCATTTTCCACTTTTAAGTGTTATGGAGTGTCTCCTACTAAATTAAATGATCTCTGCTTTACTAATGTCTATGCAGATTCATTTGTAATTAGAGGTGATGAAGTCAGACAAATCGCTCCAGGGCAAACTGGAAAGATTGCTGATTATAATTATAAATTACCAGATGATTTTACAGGCTGCGTTATAGCTTGGAATTCTAACAATCTTGATTCTAAGGTTGGTGGTAATTATAATTACCTGTATAGATTGTTTAGGAAGTCTAATCTCAAACCTTTTGAGAGAGATATTTCAACTGAAATCTATCAGGCCGGTAGCACACCTTGTAATGGTGTTGAAGGTTTTAATTGTTACTTTCCTTTACAATCATATGGTTTCCAACCCACTAATGGTGTTGGTTACCAACCATACAGAGTAGTAGTACTTTCTTTTGAACTTCTACATGCACCAGCAACTGTTTGTGGACCTAAAAAGTCTACTAATTTGGTTAAAAACAAATGTGTCAATTTC"
 covid_mother_seq_AA = "RVQPTESIVRFPNITNLCPFGEVFNATRFASVYAWNRKRISNCVADYSVLYNSASFSTFKCYGVSPTKLNDLCFTNVYADSFVIRGDEVRQIAPGQTGKIADYNYKLPDDFTGCVIAWNSNNLDSKVGGNYNYLYRLFRKSNLKPFERDISTEIYQAGSTPCNGVEGFNCYFPLQSYGFQPTNGVGYQPYRVVVLSFELLHAPATVCGPKKSTNLVKNKCVNF"
-# parse data from csv
-data = pd.read_csv('spike_protein_w_pango.csv')
+# parse data from csv files
 covid_dna_seqs = []
 covid_aa_seqs = []
 pango = []
 year = []
-for dna_seq, aa_seq, pango_elem, year_elem in zip(data['rbd_dna'], data['rbd_AA'], data['pango'], data['year']):
-    covid_dna_seqs.append(dna_seq)
-    covid_aa_seqs.append(aa_seq)
-    pango.append(pango_elem)
-    year.append(year_elem)    
+
+for i in range(1,6):
+    data = pd.read_csv(f"spike_protein_w_pango_part_{i}.csv")
+    for dna_seq, aa_seq, pango_elem, year_elem in zip(data['rbd_dna'], data['rbd_AA'], data['pango'], data['year']):
+        covid_dna_seqs.append(dna_seq)
+        covid_aa_seqs.append(aa_seq)
+        pango.append(pango_elem)
+        year.append(year_elem)   
+
 
 # Create H matrices
 def save_matrix_graphic(aa, r, path, filename, offset, threshold):
