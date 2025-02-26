@@ -284,7 +284,7 @@ def compute_consensus_matrix(lis):
     return consensus
 
 ################## PARSE DATA ############################
-path = str(Path.home() / f"Desktop/PLOS") # Change path for saved files here
+path = "" # str(Path.home() / f"Desktop/PLOS") # Change path for saved files here
 # define ancestor sequences
 covid_mother_seq_DNA = "AGAGTCCAACCAACAGAATCTATTGTTAGATTTCCTAATATTACAAACTTGTGCCCTTTTGGTGAAGTTTTTAACGCCACCAGATTTGCATCTGTTTATGCTTGGAACAGGAAGAGAATCAGCAACTGTGTTGCTGATTATTCTGTCCTATATAATTCCGCATCATTTTCCACTTTTAAGTGTTATGGAGTGTCTCCTACTAAATTAAATGATCTCTGCTTTACTAATGTCTATGCAGATTCATTTGTAATTAGAGGTGATGAAGTCAGACAAATCGCTCCAGGGCAAACTGGAAAGATTGCTGATTATAATTATAAATTACCAGATGATTTTACAGGCTGCGTTATAGCTTGGAATTCTAACAATCTTGATTCTAAGGTTGGTGGTAATTATAATTACCTGTATAGATTGTTTAGGAAGTCTAATCTCAAACCTTTTGAGAGAGATATTTCAACTGAAATCTATCAGGCCGGTAGCACACCTTGTAATGGTGTTGAAGGTTTTAATTGTTACTTTCCTTTACAATCATATGGTTTCCAACCCACTAATGGTGTTGGTTACCAACCATACAGAGTAGTAGTACTTTCTTTTGAACTTCTACATGCACCAGCAACTGTTTGTGGACCTAAAAAGTCTACTAATTTGGTTAAAAACAAATGTGTCAATTTC"
 covid_mother_seq_AA = "RVQPTESIVRFPNITNLCPFGEVFNATRFASVYAWNRKRISNCVADYSVLYNSASFSTFKCYGVSPTKLNDLCFTNVYADSFVIRGDEVRQIAPGQTGKIADYNYKLPDDFTGCVIAWNSNNLDSKVGGNYNYLYRLFRKSNLKPFERDISTEIYQAGSTPCNGVEGFNCYFPLQSYGFQPTNGVGYQPYRVVVLSFELLHAPATVCGPKKSTNLVKNKCVNF"
@@ -300,8 +300,7 @@ for i in range(1,6):
         covid_dna_seqs.append(dna_seq)
         covid_aa_seqs.append(aa_seq)
         pango.append(pango_elem)
-        year.append(year_elem)   
-
+        year.append(year_elem)    
 
 # Create H matrices
 def save_matrix_graphic(aa, r, path, filename, offset, threshold):
@@ -350,8 +349,8 @@ for r in range(7,18):
     H = lsnmf_fit.coef() # matrix of Factors x Positions 
     H_df = pd.DataFrame(H)
     
-    H_df.to_csv(f"{path}/H_Matrices/H_rank_{r}.csv", header=False, index=False)
-    save_matrix_graphic(covid_mother_seq_AA, r, f"{path}/H_Matrices", f"H_rank_{r}.csv", offset, threshold)
+    H_df.to_csv(f"{path}/H_rank_{r}.csv", header=False, index=False)
+    save_matrix_graphic(covid_mother_seq_AA, r, path, f"H_rank_{r}.csv", offset, threshold)
 
 ### Extract Union of Mutations from H matrices
 amino_acid_lis = list(covid_mother_seq_AA)
@@ -366,7 +365,7 @@ def build_mutation_str(pos_aa):
     return mutation[1:] # remove the leading comma
     
 for r in range(start,end+1):
-    H_df = pd.read_csv(f"{path}/H_Matrices/H_rank_{r}.csv")
+    H_df = pd.read_csv(f"{path}/H_rank_{r}.csv")
     for index, row in H_df.iterrows():
         pos_aa_tuple_set = set()
         for i in range(0, len(row)):
@@ -406,7 +405,6 @@ def is_subset(str1, str2):
 # change so that asymmetric relationship between subsets and supersets
 # any SINGLE failure to meet threshold, then drop subset mutation
 
-path = str(Path.home() / f"Desktop/PLOS")
 df = pd.read_csv(f"{path}/Union_Extracted_Mutations.csv")
 
 mut_freq_tuples = [(mut, freq) for mut, freq in zip(list(df["Mutations"]), list(df["Frequency"]))]
@@ -476,7 +474,7 @@ for r in range(1,51):
     CCC_lis.append(corr)
 
 stats_df = pd.DataFrame({"Rank" : r_lis, "H Similarity" : H_SIM_lis, "CCC" : CCC_lis})
-stats_df.to_csv(f"{path}/H_Matrices/H_rank_stats.csv", index=False)
+stats_df.to_csv(f"{path}/H_rank_stats.csv", index=False)
 
 ######### BRUTE FORCE FREQUENCY ANALYSIS ###########################
 def write_exhaustive_frequency_csvs(path, origin_seq, bitarray_data):
@@ -506,11 +504,9 @@ def write_exhaustive_frequency_csvs(path, origin_seq, bitarray_data):
     matrix_data = pd.DataFrame(metric_dict)
     matrix_data.to_csv(f"{path}/{filename}.csv", index=False)
 
-save_path = f"{path}/FREQ_CSVS"
-
 # these are all 21 mutation sites
 covid_mutation_sites =  f"G{339-offset},R{346-offset},S{371-offset},S{373-offset},S{375-offset},T{376-offset},D{405-offset},R{408-offset},K{417-offset},N{440-offset},G{446-offset},L{452-offset},S{477-offset},T{478-offset},E{484-offset},F{486-offset},Q{493-offset},G{496-offset},Q{498-offset},N{501-offset},Y{505-offset}"
 
 bitarray_data = get_bit_diff_dataset(covid_mother_seq_AA, covid_aa_seqs)
-write_exhaustive_frequency_csvs(save_path, covid_mutation_sites, bitarray_data)
+write_exhaustive_frequency_csvs(path, covid_mutation_sites, bitarray_data)
 
