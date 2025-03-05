@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Kolar"
+  given-names: "Michael"
+  orcid: "https://orcid.org/0009-0005-9738-2985"
+- family-names: "Mitra"
+  given-names: "Debasis"
+  orcid: "https://orcid.org/0000-0002-4351-1252"
+- family-names: "Kobzarenko"
+  given-names: "Valerie"
+  orcid: "https://orcid.org/0009-0001-8631-2122"
+title: "Efficient discovery of frequently co-occurring mutations in a sequence database with matrix factorization"
+version: 1.0
+doi: 10.5281/zenodo.14969553
+date-released: 2025-03-04
+url: "https://github.com/DM-BiC-Lab/Data-from-Efficient-discovery-of-frequently-co-occurring-mutations-in-a-sequence-database-with-matr"
