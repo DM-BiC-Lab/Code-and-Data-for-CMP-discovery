@@ -1,4 +1,4 @@
-# Source and Data for CMP discovery
+# Code and Data for CMP discovery
 
 Source code and data used for the paper "Efficient discovery 
 of frequently co-occurring mutations in a sequence database 
