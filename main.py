@@ -2,17 +2,17 @@ import collections
 import pandas as pd
 from pathlib import Path
 from itertools import chain, combinations
-from timeit import default_timer as timer
 import csv
 import seaborn as sns; sns.set_theme()
 import matplotlib.pyplot as plt
 import nimfa
 import scipy.spatial.distance as dist
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 import numpy.ma as ma
 import re
 import numpy as np
+import zipfile
+import os
 
 def convert_nucleotide_to_AA(three_nucleotides):
     if 'T' in three_nucleotides:
@@ -284,7 +284,7 @@ def compute_consensus_matrix(lis):
     return consensus
 
 ################## PARSE DATA ############################
-path = "" # str(Path.home() / f"Desktop/PLOS") # Change path for saved files here
+path = Path.cwd()
 # define ancestor sequences
 covid_mother_seq_DNA = "AGAGTCCAACCAACAGAATCTATTGTTAGATTTCCTAATATTACAAACTTGTGCCCTTTTGGTGAAGTTTTTAACGCCACCAGATTTGCATCTGTTTATGCTTGGAACAGGAAGAGAATCAGCAACTGTGTTGCTGATTATTCTGTCCTATATAATTCCGCATCATTTTCCACTTTTAAGTGTTATGGAGTGTCTCCTACTAAATTAAATGATCTCTGCTTTACTAATGTCTATGCAGATTCATTTGTAATTAGAGGTGATGAAGTCAGACAAATCGCTCCAGGGCAAACTGGAAAGATTGCTGATTATAATTATAAATTACCAGATGATTTTACAGGCTGCGTTATAGCTTGGAATTCTAACAATCTTGATTCTAAGGTTGGTGGTAATTATAATTACCTGTATAGATTGTTTAGGAAGTCTAATCTCAAACCTTTTGAGAGAGATATTTCAACTGAAATCTATCAGGCCGGTAGCACACCTTGTAATGGTGTTGAAGGTTTTAATTGTTACTTTCCTTTACAATCATATGGTTTCCAACCCACTAATGGTGTTGGTTACCAACCATACAGAGTAGTAGTACTTTCTTTTGAACTTCTACATGCACCAGCAACTGTTTGTGGACCTAAAAAGTCTACTAATTTGGTTAAAAACAAATGTGTCAATTTC"
 covid_mother_seq_AA = "RVQPTESIVRFPNITNLCPFGEVFNATRFASVYAWNRKRISNCVADYSVLYNSASFSTFKCYGVSPTKLNDLCFTNVYADSFVIRGDEVRQIAPGQTGKIADYNYKLPDDFTGCVIAWNSNNLDSKVGGNYNYLYRLFRKSNLKPFERDISTEIYQAGSTPCNGVEGFNCYFPLQSYGFQPTNGVGYQPYRVVVLSFELLHAPATVCGPKKSTNLVKNKCVNF"
@@ -294,13 +294,34 @@ covid_aa_seqs = []
 pango = []
 year = []
 
+def unzip_file(zip_filepath):
+    try:
+        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+            zip_ref.extractall()
+        print(f"Successfully extracted '{zip_filepath}' to '{os.getcwd()}'")
+    except FileNotFoundError:
+        print(f"Error: File '{zip_filepath}' not found.")
+    except zipfile.BadZipFile:
+        print(f"Error: '{zip_filepath}' is not a valid zip file.")
+    except Exception as e:
+         print(f"An unexpected error occurred: {e}")
+
+print("Begin reading data...")
 for i in range(1,6):
-    data = pd.read_csv(f"spike_protein_w_pango_part_{i}.csv")
+    data_filename = f"spike_protein_w_pango_part_{i}"
+    if not os.path.isfile(f"{data_filename}.csv"):
+        print(f"{data_filename}.csv does not exist.")
+        print(f"Attempting to unzip {data_filename}.zip...")
+        unzip_file(f"{data_filename}.zip")
+    print(f"Attempting to read {data_filename}.csv...")
+    data = pd.read_csv(f"{data_filename}.csv")
     for dna_seq, aa_seq, pango_elem, year_elem in zip(data['rbd_dna'], data['rbd_AA'], data['pango'], data['year']):
         covid_dna_seqs.append(dna_seq)
         covid_aa_seqs.append(aa_seq)
         pango.append(pango_elem)
-        year.append(year_elem)    
+        year.append(year_elem)   
+        
+print("Finished reading data.")
 
 # Create H matrices
 def save_matrix_graphic(aa, r, path, filename, offset, threshold):
@@ -336,21 +357,28 @@ def save_matrix_graphic(aa, r, path, filename, offset, threshold):
     c_map.ax_cbar.set_position((.1, .2, .02, .6))
     plt.grid(False)
 
+    print(f"Saving H matrix graphic as {path}/Factor_cluster_{r}.png")
     plt.savefig(f"{path}/Factor_cluster_{r}.png", format='png')
 
 threshold = .1
 offset = 319 # offset is 319
-V = convert_V(construct_cost_V(covid_dna_seqs, covid_mother_seq_DNA))
 
+print("Begin V matrix construction...")
+V = convert_V(construct_cost_V(covid_dna_seqs, covid_mother_seq_DNA))
+print("Finished V matrix construction.")
+
+print("Begin factorization...")
 for r in range(7,18):
+    print(f"Performing LSNMF for rank={r}...")
     lsnmf = nimfa.Lsnmf(V, seed="random_vcol", rank=r, max_iter=100, beta=0.1, n_run=1)
     lsnmf_fit = lsnmf()
 
     H = lsnmf_fit.coef() # matrix of Factors x Positions 
     H_df = pd.DataFrame(H)
-    
+    print(f"Saving H matrix as {path}/H_rank_{r}.csv")
     H_df.to_csv(f"{path}/H_rank_{r}.csv", header=False, index=False)
     save_matrix_graphic(covid_mother_seq_AA, r, path, f"H_rank_{r}.csv", offset, threshold)
+print("Finished Factorization.")
 
 ### Extract Union of Mutations from H matrices
 amino_acid_lis = list(covid_mother_seq_AA)
@@ -376,7 +404,8 @@ for r in range(start,end+1):
         if pos_aa_tuple_set:
             sorted_tuple_lis = sorted(list(pos_aa_tuple_set), key=lambda x: x[0]) # sort by position
             union_mutations.append(sorted_tuple_lis)
-        
+
+print("Begin union of mutations extraction...")    
 str_mutations = map(build_mutation_str, union_mutations)
 str_mutations = sorted(list(set(str_mutations)), key=len)
 
@@ -390,12 +419,9 @@ for key in mutation_dict.keys():
     mutation_dict[key] = freq
 
 save_df = pd.DataFrame({"Mutations" : mutation_dict.keys(), "Frequency" : mutation_dict.values()})
+print("Finished union of mutations extraction.") 
+print(f"Saving results to {path}/Union_Extracted_Mutations.csv")
 save_df.to_csv(f"{path}/Union_Extracted_Mutations.csv")
-
-import pandas as pd
-import seaborn as sns; sns.set_theme()
-import matplotlib.pyplot as plt
-from pathlib import Path
 
 def is_subset(str1, str2):
     set1 = set(str1.split(','))
@@ -404,7 +430,7 @@ def is_subset(str1, str2):
 
 # change so that asymmetric relationship between subsets and supersets
 # any SINGLE failure to meet threshold, then drop subset mutation
-
+print("Checking for statistically irrelevant mutations...")
 df = pd.read_csv(f"{path}/Union_Extracted_Mutations.csv")
 
 mut_freq_tuples = [(mut, freq) for mut, freq in zip(list(df["Mutations"]), list(df["Frequency"]))]
@@ -440,24 +466,24 @@ for i in range(0, len(mut_freq_tuples)):
                         
 final_list.sort(key=lambda t: len(t[0]), reverse=False)
 final_mut_list, final_freq_lis = zip(*final_list)
+
 df_temp = pd.DataFrame()
 df_temp['Mutations'] = final_mut_list
 df_temp['Frequency'] = final_freq_lis
+print(f"Saving results to {path}/Extracted_Mutations_Without_Any_Statistically_Irrelvent_Subsets.csv")
 df_temp.to_csv(f"{path}/Extracted_Mutations_Without_Any_Statistically_Irrelvent_Subsets.csv")
 
 ### Caculate DSIM for r = [1,50]
 def factor_sim(f):
-    import numpy as np
     fxft = np.dot(f, f.transpose())
     return (float(np.linalg.det(fxft)))
 
 r_lis = []
 H_SIM_lis = []
-CCC_lis = []
 
+print("Begin calculating DSIM for r = [1,50]...")
 for r in range(1,51):
     r_lis.append(r)
-    start = timer()
     lsnmf = nimfa.Lsnmf(V, seed="random_vcol", rank=r, max_iter=100, beta=0.1, n_run=1)
     lsnmf_fit = lsnmf()
 
@@ -466,14 +492,8 @@ for r in range(1,51):
     H_sim = factor_sim(H)
     H_SIM_lis.append(H_sim)
 
-    # compute CCC for rank
-    C_prime = lsnmf_fit.fit.connectivity()
-    I = np.identity(C_prime.shape[0])
-    HC_linkage = dist.squareform(dist.pdist(C_prime))
-    corr = np.corrcoef((I - C_prime).flat, HC_linkage.flat)[0][1]
-    CCC_lis.append(corr)
-
-stats_df = pd.DataFrame({"Rank" : r_lis, "H Similarity" : H_SIM_lis, "CCC" : CCC_lis})
+print(f"Finsihed DSIM calculations. Saving results to {path}/H_rank_stats.csv")
+stats_df = pd.DataFrame({"Rank" : r_lis, "H Similarity" : H_SIM_lis})
 stats_df.to_csv(f"{path}/H_rank_stats.csv", index=False)
 
 ######### BRUTE FORCE FREQUENCY ANALYSIS ###########################
@@ -501,12 +521,13 @@ def write_exhaustive_frequency_csvs(path, origin_seq, bitarray_data):
             
     # Write any remaining values        
     filename = f"Mutation_Frequency_Batch_{file_count}"
+    print(f"Finished brute-force analysis. Saving results to {path}/{filename}.csv")
     matrix_data = pd.DataFrame(metric_dict)
     matrix_data.to_csv(f"{path}/{filename}.csv", index=False)
 
 # these are all 21 mutation sites
 covid_mutation_sites =  f"G{339-offset},R{346-offset},S{371-offset},S{373-offset},S{375-offset},T{376-offset},D{405-offset},R{408-offset},K{417-offset},N{440-offset},G{446-offset},L{452-offset},S{477-offset},T{478-offset},E{484-offset},F{486-offset},Q{493-offset},G{496-offset},Q{498-offset},N{501-offset},Y{505-offset}"
-
+print("Begin brute-force frequency analysis...")
 bitarray_data = get_bit_diff_dataset(covid_mother_seq_AA, covid_aa_seqs)
 write_exhaustive_frequency_csvs(path, covid_mutation_sites, bitarray_data)
 
